@@ -1,5 +1,9 @@
 const express = require("express");
+const {users} = require("./data/users.json");
 
+//routers
+const usersRouter = require("./routes/users")
+const booksRouter = require("./routes/books")
 const app = express();
 
 const PORT = 8081;
@@ -12,11 +16,9 @@ app.get("/", (req,res)=>{
     })
 })
 
-app.use((req,res)=>{
-    res.status(404).json({
-        message:"Route not found"
-    })
-});
+app.use("/users",usersRouter)
+app.use("/books",booksRouter)
+
 
 
 app.listen(PORT,()=>{
