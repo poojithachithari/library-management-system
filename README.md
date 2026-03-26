@@ -65,3 +65,18 @@ npm i nodemon --save-dev
 npm run dev
 
 To restore node modules and packageloch.json --> npm i or npm install
+
+npm install mongoose (To install Mangoose)
+
+npm install mongodb (To install the driver)
+
+
+## MVC
+
+m >> model (Structure of MongoDB)
+V >> view (frontend)
+C >> Controller (logic or brain of route)
+
+## DTO (Data Transfer Object)
+
+

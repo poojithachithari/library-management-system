@@ -1,17 +1,5 @@
-const express = require("express");
-const {users} = require("../data/users.json");
-const { getAllUsers, getSingleUserById, createUser, updateUserById, deleteUserById, getSubscriptionDetailsById } = require("../controllers/user-controller");
-const { create } = require("../models/user-model");
+const {UserModel, BookModel} = require('../models/index');
 
-const router = express.Router();
-
-/**
- * Route: /users
- * Method: GET
- * Description: Get all the list of users in the system
- * Access:Public
- * Parameters: None
- */
 // router.get('/',(req,res)=>{
 //     res.status(200).json({
 //         success: true,
@@ -19,15 +7,23 @@ const router = express.Router();
 //     })
 // })
 
-router.get('/', getAllUsers);
+exports.getAllUsers = async (req, res) =>{
+    const users = await UserModel.find();
 
-/**
- * Route: /users/:id
- * Method: GET
- * Description: Get a user by their id
- * Access:Public
- * Parameters: id
- */
+    if(!users || users.length  === 0){
+        return res.status(404).json({
+            success: false,
+            message: "No users found"
+        });
+    }
+
+    res.status(200).json({
+        success: true,
+        data: users
+    });
+
+}
+
 // router.get('/:id', (req,res)=>{
 //     const {id} = req.params
 //     const user = users.find((each)=>each.id === id)
@@ -45,14 +41,23 @@ router.get('/', getAllUsers);
 //     })
 // })
 
-router.get('/:id', getSingleUserById);
-/**
- * Route: /users
- * Method: POST
- * Description: Create/Register a new user
- * Access:Public
- * Parameters: none
- */
+exports.getSingleUserById = async (req, res) => {
+    const {id} = req.params
+    const user = await UserModel.findById(id);
+
+    if(!user){
+        return res.status(404).json({
+            success: false,
+            message: `User not found for id:${id}`
+        })
+    }   
+
+    res.status(200).json({
+        success: true,
+        data: user
+    });
+
+}
 
 // router.post('/',(req,res)=>{
 //     const {id,name,surname,email,subscriptionType,subscriptionDate} = req.body;
@@ -79,15 +84,24 @@ router.get('/:id', getSingleUserById);
 //     })
 // })
 
-router.post('/', createUser);
+exports.createUser = async (req, res) => {
+    const {data} = req.body;
+    if(!data || Object.keys(data).length === 0){
+        return res.status(400).json({
+            success: false,
+            message: "Please provide the data to create a new user"
+        })
+    }
 
-/**
- * Route: /users/:id
- * Method: PUT
- * Description: Updating a user by their ID
- * Access:Public
- * Parameters: ID
- */
+    await UserModel.create(data);
+    const getAllUsers = await UserModel.find();
+
+    res.status(201).json({
+        success: true,
+        message: "User created Successfully",
+        data: getAllUsers
+    })               
+};
 
 // router.put('/:id',(req,res)=>{
 //     const {id} = req.params;
@@ -120,14 +134,35 @@ router.post('/', createUser);
 //      })
 // })
 
-router.put('/:id', updateUserById);
-/**
- * Route: /users/:id
- * Method: DELETE
- * Description: Deleting a user by their ID
- * Access:Public
- * Parameters: ID
- */
+exports.updateUserById = async (req, res) => {
+    const {id} = req.params;
+    const {data} = req.body;    
+    if(!data || Object.keys(data).length === 0){
+        return res.status(400).json({
+            success: false,
+            message: "Please provide the data to update the user"
+         })
+     }      
+    
+    //Check if user exists
+    const user = await UserModel.findById(id);
+    if(!user){
+        return res.status(404).json({
+            success: false,
+            message: `User not found for id:${id}`
+        })
+     }
+
+    // if user exists update the user with the new data
+
+    const updatedUser = await UserModel.findByIdAndUpdate(id, data, {new: true});
+
+    res.status(200).json({
+        success: true,
+        data: updatedUser,
+        message: "User updated successfully"
+     });     
+}
 
 // router.delete('/:id',(req,res)=>{
 //     //Check if user exists
@@ -149,15 +184,25 @@ router.put('/:id', updateUserById);
 //      })
 // });
 
-router.delete('/:id', deleteUserById);
+exports.deleteUserById = async (req, res) => {
+    const {id} = req.params;
 
-/**
- * Route: /users/subscription-details/:id
- * Method: GET
- * Description: Get subscription details of a user by their ID
- * Access:Public
- * Parameters: ID
- */
+    // Check if user exists
+    const user = await UserModel.findById(id);
+    if(!user){
+        return res.status(404).json({
+            success: false,
+            message: `User not found for id:${id}`
+        })
+     }      
+
+    // if user exists delete the user
+    await UserModel.findByIdAndDelete(id);      
+    res.status(200).json({
+        success: true,
+        message: "User deleted successfully"
+     });
+}
 
 // router.get('/subscription-details/:id',(req,res)=>{
 //     const {id} = req.params;
@@ -221,5 +266,61 @@ router.delete('/:id', deleteUserById);
 //     })
 // })
 
-router.get('/subscription-details/:id', getSubscriptionDetailsById);
-module.exports = router;
+exports.getSubscriptionDetailsById = async (req, res) => {
+    const {id} = req.params;
+    const user = await UserModel.findById(id);
+
+    if(!user){
+        return res.status(404).json({
+            success: false,
+            message: `User not found for id:${id}`
+        })
+     }      
+
+    //Extract the subscription details from the user object
+    const getDateInDays = (data = '')=>{
+        let date;   
+        if(data){
+            date = new Date(data)
+        } else{
+            date = new Date();
+        }       
+        let days = Math.floor(date/(1000*60*60*24));
+        return days;
+    }   
+
+    const subscriptionType = (data)=>{
+        let date = data;    
+        if(user.subscriptionType === "Basic"){
+            date = date + 90
+        } else if(user.subscriptionType === "Standard"){
+            date = date + 180
+        } else if(user.subscriptionType === "Premium"){
+            date = date + 365
+        }       
+        return date;
+    }
+
+    //subscription expiration calculation
+    //jan 1 1970 UTC // milliseconds        
+    let returnDate = getDateInDays(user.returnDate);
+    let currentDate = getDateInDays();
+    let subscriptionDate = getDateInDays(user.subscriptionDate);
+    let subscriptionExpiration = subscriptionType(subscriptionDate);
+
+    const data = {
+        ...user._doc,
+        subscriptionExpired: subscriptionExpiration < currentDate,
+        subscriptionDaysLeft: subscriptionExpiration - currentDate,
+        daysLeftForExpiration: returnDate - currentDate,
+        returnDate: returnDate < currentDate? "Book is Overdue":returnDate,
+        fine: returnDate < currentDate? subscriptionExpiration<=currentDate?200 :100 : 0        
+    }
+
+      res.status(200).json({
+        success: true,
+        data: data
+     });
+
+
+}
